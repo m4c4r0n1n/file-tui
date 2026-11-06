@@ -295,11 +295,54 @@ pub fn handle_key(app: &mut App, ev: KeyEvent) -> bool {
         return false;
     }
 
+    let pending_d = app.pending_d.take();
+    if ev.code == KeyCode::Char('d') && ev.modifiers == KeyModifiers::NONE && app.keymap.action(&ev).is_none() {
+        if pending_d.is_some_and(|t| t.elapsed() < DOUBLE_D) {
+            return run_action(app, Action::Delete);
+        }
+        app.pending_d = Some(std::time::Instant::now());
+        return false;
+    }
+
     if let Some(action) = app.keymap.action(&ev) {
         return run_action(app, action);
     }
 
     false
+}
+
+const DOUBLE_D: std::time::Duration = std::time::Duration::from_millis(500);
+
+fn drag_sources(app: &App, item_idx: usize) -> Vec<std::path::PathBuf> {
+    if app.multi_selection.contains(&item_idx) {
+        actions::selected_paths(app)
+    } else {
+        app.listing.entries.get(item_idx).map(|e| vec![e.path.clone()]).unwrap_or_default()
+    }
+}
+
+fn drop_on_place(app: &mut App, item_idx: usize, place: usize, copy: bool) {
+    let Some(dest) = app.places.get(place).map(|p| std::path::PathBuf::from(&p.path)) else { return; };
+    let sources = drag_sources(app, item_idx);
+    if sources.is_empty() {
+        return;
+    }
+    if crate::fileops::in_trash(&dest) {
+        if !sources.iter().any(|s| crate::fileops::in_trash(s)) {
+            app.fileops.trash(sources);
+            app.selection = None;
+            app.multi_selection.clear();
+        }
+        return;
+    }
+    if !dest.is_dir() || sources.iter().any(|s| s.parent() == Some(dest.as_path()) || dest.starts_with(s)) {
+        return;
+    }
+    if copy {
+        app.fileops.copy(sources, &dest);
+    } else {
+        app.fileops.move_to(sources, &dest);
+    }
 }
 
 /// Do a bound action; true means quit.
@@ -726,17 +769,23 @@ pub fn handle_mouse(app: &mut App, ev: MouseEvent) {
                             origin,
                             current_pos: (col, row),
                             hover_target: None,
+                            hover_place: None,
                         };
                     }
                 }
                 DragState::Dragging { item_idx, origin, .. } => {
                     let hover = hit_test(app, col, row)
                         .filter(|&i| i != item_idx && app.listing.entries.get(i).map(|e| e.is_dir).unwrap_or(false));
+                    let hover_place = match sidebar::target_at(app, col, row) {
+                        Some(crate::events::SidebarTarget::Place(i)) => Some(i),
+                        _ => None,
+                    };
                     app.drag_state = DragState::Dragging {
                         item_idx,
                         origin,
                         current_pos: (col, row),
                         hover_target: hover,
+                        hover_place,
                     };
                 }
                 _ => {}
@@ -764,16 +813,14 @@ pub fn handle_mouse(app: &mut App, ev: MouseEvent) {
             let active = app.tabs[app.active_tab].active;
             let other_pane = app.split().then(|| app.pane_rects.get(1 - active.min(1)).copied()).flatten()
                 .filter(|r| contains(*r, col, row));
-            if let DragState::Dragging { item_idx, .. } = app.drag_state.clone()
+            if let DragState::Dragging { item_idx, hover_place: Some(place), .. } = app.drag_state.clone() {
+                drop_on_place(app, item_idx, place, copy);
+            } else if let DragState::Dragging { item_idx, .. } = app.drag_state.clone()
                 && other_pane.is_some()
             {
                 // Dropped on the other side: into the folder under the
                 // pointer there, else the folder it shows
-                let sources = if app.multi_selection.contains(&item_idx) {
-                    actions::selected_paths(app)
-                } else {
-                    app.listing.entries.get(item_idx).map(|e| vec![e.path.clone()]).unwrap_or_default()
-                };
+                let sources = drag_sources(app, item_idx);
                 let dest = app.with_other_pane(|a| {
                     hit_test(a, col, row).and_then(|i| a.listing.entries.get(i)).filter(|e| e.is_dir)
                         .map(|e| e.path.clone()).unwrap_or_else(|| a.cwd.clone())

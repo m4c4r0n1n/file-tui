@@ -340,6 +340,7 @@ fn open_name_prompt(app: &mut App, kind: crate::events::PromptKind, dest: &Path,
         cursor_pos: 0,
         input: String::new(),
         invalid: false,
+        error: String::new(),
         placeholder,
     });
 }
@@ -361,8 +362,16 @@ pub fn commit_name_prompt(app: &mut App) {
     };
     let name = name.as_str();
     let path = state.dest.join(name);
-    if name.is_empty() || name.contains('/') || name == "." || name == ".." || path.symlink_metadata().is_ok() {
+    let error = if name.is_empty() || name.contains('/') || name == "." || name == ".." {
+        Some(format!("\"{name}\" is not a valid name"))
+    } else if path.symlink_metadata().is_ok() {
+        Some(format!("\"{name}\" already exists here"))
+    } else {
+        None
+    };
+    if let Some(error) = error {
         state.invalid = true;
+        state.error = error;
         return;
     }
     let state_kind_label = match &state.kind {
@@ -378,6 +387,7 @@ pub fn commit_name_prompt(app: &mut App) {
     if let Err(e) = result {
         tracing::error!("create {}: {e}", path.display());
         state.invalid = true;
+        state.error = e.to_string();
         return;
     }
     app.name_prompt = None;

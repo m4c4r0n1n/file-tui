@@ -265,6 +265,10 @@ fn render_name_prompt(f: &mut Frame, app: &mut App) {
             ratatui::text::Span::styled(format!("{visible:<field_w$}"), Style::default().bg(theme::rgb(field_bg)).fg(field_fg)),
         ]),
     ];
+    let mut lines = lines;
+    if p.invalid {
+        lines.push(Line::styled(format!("  {}", p.error), Style::default().fg(theme::rgb(theme::get().error))));
+    }
     f.render_widget(
         Paragraph::new(lines).style(bg),
         Rect { x: area.x + 1, y: area.y + 1, width: area.width.saturating_sub(2), height: area.height.saturating_sub(2) },

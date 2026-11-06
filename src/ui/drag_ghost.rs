@@ -23,7 +23,7 @@ pub fn ghost_rect(app: &App, term: Rect) -> Option<Rect> {
 
 pub fn render_drag_ghost(f: &mut Frame, app: &App) {
     let Some(area) = ghost_rect(app, f.area()) else { return; };
-    let DragState::Dragging { item_idx, hover_target, .. } = &app.drag_state else { return; };
+    let DragState::Dragging { item_idx, hover_target, hover_place, .. } = &app.drag_state else { return; };
 
     let name = app.listing.entries
         .get(*item_idx)
@@ -31,7 +31,7 @@ pub fn render_drag_ghost(f: &mut Frame, app: &App) {
         .unwrap_or("???");
     let display = format!(" {} ", name);
 
-    let (bg, fg) = if hover_target.is_some() {
+    let (bg, fg) = if hover_target.is_some() || hover_place.is_some() {
         (theme::rgb(theme::get().drop_target), theme::drop_target_text())  // valid drop target
     } else {
         (theme::rgb(theme::get().ghost), theme::text_strong())   // neutral ghost

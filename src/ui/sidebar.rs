@@ -85,7 +85,9 @@ pub fn render_sidebar(f: &mut Frame, app: &mut App, area: Rect) {
             let rect = Rect { x: inner.x, y, width, height: h };
             let drag = app.place_drag.filter(|d| d.active);
             let is_drop = matches!((drag, row.target),
-                (Some(d), SidebarTarget::Place(j)) if d.target == Some(j) && d.from != j);
+                (Some(d), SidebarTarget::Place(j)) if d.target == Some(j) && d.from != j)
+                || matches!((&app.drag_state, row.target),
+                    (crate::events::DragState::Dragging { hover_place: Some(i), .. }, SidebarTarget::Place(j)) if *i == j);
             let bg = if is_drop {
                 Some(theme::get().hover)
             } else if row.current {

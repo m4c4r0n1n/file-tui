@@ -56,6 +56,7 @@ pub enum DragState {
         origin: (u16, u16),
         current_pos: (u16, u16),
         hover_target: Option<usize>,
+        hover_place: Option<usize>,
     },
 }
 
@@ -144,6 +145,7 @@ pub struct NamePrompt {
     pub cursor_pos: usize,
     /// Last commit was rejected (bad name or file exists); cleared on edit.
     pub invalid: bool,
+    pub error: String,
     /// Shown greyed while the field is empty, and used if it's left empty.
     pub placeholder: String,
 }

@@ -41,15 +41,16 @@ A small rewrite of file-browser-tui by adelmonte at https://github.com/adelmonte
 - `Alt+Up`: Up a folder
 - `F5`: Reload
 - `Ctrl+H`, `Alt+.`: Show/hide hidden files
-- `F10`: New folder
+- `n`: New folder
+- `Ctrl+N`: New file
 - `F2`: Rename
 - `Ctrl+C`: Copy
 - `Ctrl+X`: Cut
 - `Ctrl+V`: Paste
 - `Ctrl+Alt+C`: Copy location
 - `Ctrl+Z`: Undo
-- `Delete`: Move to trash
-- `Shift+Delete`: Delete permanently
+- `Delete` or `t`: Move to trash
+- `Shift+Delete` or `dd`: Delete permanently
 - `Alt+Enter`: Properties
 - `Shift+F4`: Open terminal here
 - `Ctrl+Plus`, `Ctrl+=`: Larger icons
@@ -68,6 +69,6 @@ A small rewrite of file-browser-tui by adelmonte at https://github.com/adelmonte
 - `Arrows`: Move selection (Shift extends)
 - `Double-click`: Open
 - `Right-click`: Context menu
-- `Drag`: Move (Ctrl copies) / select
+- `Drag`: Move (Ctrl copies) / select. Drop on a place to move there, or on Trash to trash it
 
 Nixed with ♥️
