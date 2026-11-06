@@ -70,4 +70,4 @@ A small rewrite of file-browser-tui by adelmonte at https://github.com/adelmonte
 - `Right-click`: Context menu
 - `Drag`: Move (Ctrl copies) / select
 
-Fixed with ♥️
+Nixed with ♥️
