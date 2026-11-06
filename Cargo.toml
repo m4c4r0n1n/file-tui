@@ -1,0 +1,38 @@
+[package]
+name = "file-tui"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.92.0"
+description = "A Dolphin-like file manager for kitty"
+license = "GPL-3.0-only"
+repository = "https://github.com/adelmonte/file-tui"
+readme = "README.md"
+keywords = ["file-manager", "tui", "terminal", "kitty", "ratatui"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "file-tui"
+path = "src/main.rs"
+
+[dependencies]
+ratatui          = "0.30.0"
+ratatui-image    = { version = "11.0.2", default-features = false, features = ["crossterm", "image-defaults"] }
+image            = { version = "0.25.10", features = ["png", "jpeg", "gif", "webp"] }
+serde            = { version = "1.0", features = ["derive"] }
+toml             = "0.8"
+anyhow           = "1.0"
+tracing          = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+lru              = "0.16"
+rayon            = "1.12"
+nix              = { version = "0.30.1", features = ["inotify", "poll", "fs", "user", "process"] }
+dirs             = "5.0"
+chrono           = { version = "0.4", default-features = false, features = ["std", "clock"] }
+strum            = { version = "0.27", features = ["derive"] }
+md5 = "0.8.0"
+png = "0.18"
+unicode-width = "0.2"
+base64 = "0.22"
+zip = { version = "9.3.0", default-features = false, features = ["deflate"] }
+flate2 = "1.1.10"
+toml_edit = "0.22"

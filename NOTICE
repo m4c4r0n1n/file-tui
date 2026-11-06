@@ -1,0 +1,8 @@
+file-tui is a modified version of file-browser-tui by adelmonte
+https://github.com/adelmonte/file-browser-tui
+
+Changed on 2026-11-05: renamed the project; plain text and menus for Ghostty;
+full sidebar highlight; larger sidebar icons; fixed the icon temp-file race;
+lower idle redraw rate; permanent delete inside Trash.
+
+Licensed under the GNU General Public License v3.0 only. See LICENSE.

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=file-tui
+GenericName=File Manager
+Comment=A file manager for the terminal
+Exec=ghostty -e file-tui %f
+Icon=system-file-manager
+Terminal=false
+Categories=System;FileTools;FileManager;
+MimeType=inode/directory;
+Keywords=files;folders;browser;explorer;
+StartupWMClass=file-tui
