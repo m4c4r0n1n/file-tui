@@ -25,7 +25,7 @@ mod user_actions;
 use std::{io::Write, sync::mpsc, time::Duration};
 
 use ratatui::crossterm::event::{
-    self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind,
+    self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture, Event, KeyEventKind,
     KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use ratatui::crossterm::{execute, terminal::{SetTitle, supports_keyboard_enhancement}};
@@ -35,6 +35,7 @@ use app::App;
 use config::Config;
 
 fn main() -> anyhow::Result<()> {
+    let _ = rayon::ThreadPoolBuilder::new().num_threads(4).build_global();
     match std::env::args().nth(1).as_deref() {
         Some("--check") => std::process::exit(check::run()),
         Some("--kitty") => {
@@ -51,6 +52,7 @@ fn main() -> anyhow::Result<()> {
             println!("file-tui {}", env!("CARGO_PKG_VERSION"));
             return Ok(());
         }
+        Some("--text") => {}
         Some("--help" | "-h") => {
             println!("{}", HELP);
             return Ok(());
@@ -83,7 +85,7 @@ fn main() -> anyhow::Result<()> {
     // Enter alternate screen FIRST (required before Picker::from_query_stdio)
     let mut terminal = ratatui::init();
 
-    execute!(std::io::stdout(), EnableMouseCapture)?;
+    execute!(std::io::stdout(), EnableMouseCapture, EnableBracketedPaste)?;
 
     // Kitty keyboard protocol: distinguishes Shift+Backspace etc. and reports
     // event kinds (we filter to Press/Repeat so keys don't double-fire).
@@ -99,10 +101,14 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Query terminal capabilities AFTER alternate screen, BEFORE any event::read()
-    let picker = Picker::from_query_stdio().unwrap_or_else(|e| {
-        tracing::warn!("Picker::from_query_stdio failed: {e}");
+    let picker = if std::env::var_os("TMUX").is_some() {
         Picker::halfblocks()
-    });
+    } else {
+        Picker::from_query_stdio().unwrap_or_else(|e| {
+            tracing::warn!("Picker::from_query_stdio failed: {e}");
+            Picker::halfblocks()
+        })
+    };
 
     tracing::info!(
         "Protocol: {:?}, font_size: {:?}",
@@ -116,7 +122,8 @@ fn main() -> anyhow::Result<()> {
 
     // Optional start path: a folder opens there, a file opens its folder
     // with it selected
-    let start = std::env::args_os().nth(1).map(std::path::PathBuf::from)
+    let text_flag = std::env::args().nth(1).as_deref() == Some("--text");
+    let start = std::env::args_os().nth(if text_flag { 2 } else { 1 }).map(std::path::PathBuf::from)
         .and_then(|p| std::fs::canonicalize(p).ok());
     if let Some(p) = &start {
         let dir = if p.is_dir() { Some(p.as_path()) } else { p.parent() };
@@ -125,7 +132,11 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    let text_only = text_flag || config.text_only || picker.protocol_type() == ProtocolType::Halfblocks;
     let mut app = App::new(picker, config, dir_rx, mount_rx)?;
+    if text_only {
+        app.toggle_text_mode();
+    }
     // Started in kitty some other way: say once how to get its options
     if first_run
         && app.picker.protocol_type() == ProtocolType::Kitty
@@ -146,7 +157,7 @@ fn main() -> anyhow::Result<()> {
 
     let hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        let _ = execute!(std::io::stdout(), PopKeyboardEnhancementFlags, DisableMouseCapture);
+        let _ = execute!(std::io::stdout(), PopKeyboardEnhancementFlags, DisableMouseCapture, DisableBracketedPaste);
         ratatui::restore();
         hook(info);
     }));
@@ -163,7 +174,7 @@ fn main() -> anyhow::Result<()> {
     if kbd_enhanced {
         let _ = execute!(std::io::stdout(), PopKeyboardEnhancementFlags);
     }
-    execute!(std::io::stdout(), DisableMouseCapture)?;
+    execute!(std::io::stdout(), DisableMouseCapture, DisableBracketedPaste)?;
     ratatui::restore();
 
     // Persist config and per-dir view state
@@ -189,6 +200,7 @@ Usage: file-tui [--kitty] [PATH]
 Options:
   --kitty     open in a new kitty window set up for the app (no padding,
               Shift/Ctrl+Shift clicks reach it); use this in launchers
+  --text      use text icons instead of images (F9 toggles)
   --check     list the optional tools and features found on this system
   --version   print the version
   --help      print this help
@@ -216,7 +228,7 @@ fn run(
     // moment to load instead of drawing without them
     ui::sidebar::request_icons(app);
     let started = std::time::Instant::now();
-    while started.elapsed() < Duration::from_millis(150)
+    while !app.text_mode && started.elapsed() < Duration::from_millis(150)
         && (app.icon_cache.loading() || app.sidebar_icons.loading() || app.thumb_cache.loading())
     {
         std::thread::sleep(Duration::from_millis(2));
@@ -226,6 +238,7 @@ fn run(
     let is_kitty = app.picker.protocol_type() == ProtocolType::Kitty;
     let mut title_path = std::path::PathBuf::new();
     let mut last_input = std::time::Instant::now();
+    let mut last_draw = std::time::Instant::now();
 
     'frames: loop {
         // Drain background results (icons, thumbs, dir events, mount events)
@@ -234,52 +247,56 @@ fn run(
         // Render frame. Everything it writes (cells, centered labels, image
         // cleanup) goes in one synchronized update, so the terminal shows
         // whole frames only, never one half-drawn mid-scroll
-        app.tick_scroll();
-        {
-            let mut out = std::io::stdout().lock();
-            let _ = out.write_all(b"\x1b[?2026h");
-        }
-        terminal.draw(|f| ui::render(f, app))?;
-        // Window title follows the current folder, like Dolphin's
-        if app.cwd != title_path {
-            title_path = app.cwd.clone();
-            let _ = execute!(std::io::stdout(), SetTitle(title_path.to_string_lossy()));
-        }
-        if !app.post_draw.is_empty() {
-            let mut out = std::io::stdout().lock();
-            for s in app.post_draw.drain(..) {
-                let _ = out.write_all(s.as_bytes());
+        let busy = last_input.elapsed() < Duration::from_secs(1)
+            || app.icon_cache.loading() || app.sidebar_icons.loading() || app.thumb_cache.loading();
+        if busy || app.redraw || app.needs_live_redraw() || last_draw.elapsed() >= Duration::from_secs(1) {
+            app.redraw = false;
+            last_draw = std::time::Instant::now();
+            app.tick_scroll();
+            {
+                let mut out = std::io::stdout().lock();
+                let _ = out.write_all(b"\x1b[?2026h");
             }
-            let _ = out.flush();
-        }
-
-        // Clean up Kitty placements for images that vanished or changed
-        // this frame (occluded by overlays, scrolled away, dir changed, ...)
-        let (deletions, delete_all) = app.kitty_frame_diff();
-        if is_kitty && (delete_all || !deletions.is_empty()) {
-            let mut out = std::io::stdout().lock();
-            if delete_all {
-                let _ = ui::kitty::delete_all(&mut out);
-            } else {
-                let _ = ui::kitty::delete_at(&mut out, &deletions);
+            terminal.draw(|f| ui::render(f, app))?;
+            // Window title follows the current folder, like Dolphin's
+            if app.cwd != title_path {
+                title_path = app.cwd.clone();
+                let _ = execute!(std::io::stdout(), SetTitle(title_path.to_string_lossy()));
             }
-            let _ = out.flush();
-        }
-        {
-            let mut out = std::io::stdout().lock();
-            let _ = out.write_all(b"\x1b[?2026l");
-            let _ = out.flush();
-        }
+            if !app.post_draw.is_empty() {
+                let mut out = std::io::stdout().lock();
+                for s in app.post_draw.drain(..) {
+                    let _ = out.write_all(s.as_bytes());
+                }
+                let _ = out.flush();
+            }
 
-        // Queue icons for newly visible cells after render updated grid_cols/grid_area
-        app.queue_all_visible_icons();
+            // Clean up Kitty placements for images that vanished or changed
+            // this frame (occluded by overlays, scrolled away, dir changed, ...)
+            let (deletions, delete_all) = app.kitty_frame_diff();
+            if is_kitty && (delete_all || !deletions.is_empty()) {
+                let mut out = std::io::stdout().lock();
+                if delete_all {
+                    let _ = ui::kitty::delete_all(&mut out);
+                } else {
+                    let _ = ui::kitty::delete_at(&mut out, &deletions);
+                }
+                let _ = out.flush();
+            }
+            {
+                let mut out = std::io::stdout().lock();
+                let _ = out.write_all(b"\x1b[?2026l");
+                let _ = out.flush();
+            }
+
+            // Queue icons for newly visible cells after render updated grid_cols/grid_area
+            app.queue_all_visible_icons();
+        }
 
         // Wait up to a frame for input, then take everything already
         // queued before drawing again: a burst of wheel events is one frame
         let frame = Duration::from_millis(16);
         let batch_start = std::time::Instant::now();
-        let busy = last_input.elapsed() < Duration::from_secs(1)
-            || app.icon_cache.loading() || app.sidebar_icons.loading() || app.thumb_cache.loading();
         let mut timeout = if busy { frame } else { Duration::from_millis(250) };
         while event::poll(timeout)? {
             timeout = Duration::ZERO;
@@ -308,6 +325,10 @@ fn run(
                     if handler::handle_key(app, key) {
                         break 'frames;
                     }
+                    maybe_restart_watcher(app, dir_watcher);
+                }
+                Event::Paste(text) => {
+                    handler::handle_paste(app, &text);
                     maybe_restart_watcher(app, dir_watcher);
                 }
                 Event::Mouse(mouse) => {

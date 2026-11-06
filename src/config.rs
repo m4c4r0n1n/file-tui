@@ -25,6 +25,8 @@ pub struct Config {
     pub show_in_groups: bool,
     #[serde(default = "default_icon_size")]
     pub icon_size_idx: usize,
+    #[serde(default)]
+    pub text_only: bool,
     #[serde(default = "default_sidebar_w")]
     pub sidebar_w: u16,
     /// Terminal emulator for "Open in terminal". Empty = $TERMINAL, fallback kitty.
@@ -177,6 +179,7 @@ impl Default for Config {
             folders_first: true,
             show_in_groups: true,
             icon_size_idx: default_icon_size(),
+            text_only: false,
             sidebar_w: 18,
             terminal_command: String::new(),
             folder_icons: HashMap::new(),
@@ -264,6 +267,7 @@ fn template() -> String {
 
 # default_view = "icons"        # icons, compact or details
 # show_hidden = false
+# text_only = false             # text icons instead of images (F9 toggles)
 # folders_first = true
 # show_in_groups = true         # Details view: Dolphin's "Show in Groups"
 # icon_size_idx = 7             # 0 (smallest) to 19

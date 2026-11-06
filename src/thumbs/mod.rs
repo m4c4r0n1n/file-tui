@@ -75,7 +75,7 @@ impl ThumbCache {
         // Thumbnailers mostly wait on decoders and ffmpeg, so they get their
         // own threads rather than the icon pool. Two are kept for what's on
         // screen: background work never takes the last of them
-        let workers = std::thread::available_parallelism().map_or(4, |n| n.get()).clamp(3, 8);
+        let workers = std::thread::available_parallelism().map_or(4, |n| n.get()).clamp(3, 4);
         let bg_limit = workers - 2;
         for _ in 0..workers {
             let (shared, tx) = (shared.clone(), tx_image.clone());

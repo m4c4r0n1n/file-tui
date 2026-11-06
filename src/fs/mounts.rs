@@ -152,7 +152,7 @@ pub fn parse_mountinfo() -> anyhow::Result<Vec<DeviceEntry>> {
             continue;
         }
 
-        // Real user FUSE mounts (sshfs, rclone, ...) — but not gvfs/portal
+        // Real user FUSE mounts (sshfs, rclone, ...), but not gvfs/portal
         // infrastructure (nothing under /run/user), and not fusectl.
         let is_fuse = (fstype == "fuse" || fstype == "fuseblk" || fstype.starts_with("fuse."))
             && !FUSE_BLOCKLIST.contains(&fstype)

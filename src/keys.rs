@@ -63,6 +63,9 @@ pub enum Action {
     ViewDetails,
     SidebarNarrower,
     SidebarWider,
+    ToggleTextMode,
+    ContextMenu,
+    DragOut,
 }
 
 /// Config name, action, Dolphin's default keys, and the help text.
@@ -114,6 +117,9 @@ pub const ACTIONS: &[(&str, Action, &[&str], &str)] = &[
     ("view_details", Action::ViewDetails, &["Ctrl+3"], "Details view"),
     ("sidebar_narrower", Action::SidebarNarrower, &["Alt+["], "Narrower sidebar"),
     ("sidebar_wider", Action::SidebarWider, &["Alt+]"], "Wider sidebar"),
+    ("toggle_text_mode", Action::ToggleTextMode, &["F9"], "Text icons on/off"),
+    ("context_menu", Action::ContextMenu, &["Shift+F10"], "Open the context menu"),
+    ("drag_out", Action::DragOut, &["Ctrl+D"], "Drag to another app"),
     ("new_tab", Action::NewTab, &["Ctrl+T"], "New tab"),
     ("close_tab", Action::CloseTab, &["Ctrl+W"], "Close tab"),
     ("next_tab", Action::NextTab, &["Ctrl+Tab", "Ctrl+PageDown"], "Next tab"),

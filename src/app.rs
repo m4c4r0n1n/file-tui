@@ -259,6 +259,8 @@ pub struct App {
 
     // Image rendering
     pub picker: Picker,
+    pub text_mode: bool,
+    pub redraw: bool,
     pub icon_cache: IconCache,
     pub thumb_cache: ThumbCache,
     pub previews: crate::thumbs::Previews,
@@ -522,6 +524,8 @@ impl App {
             cell_h,
             icon_rows,
             picker,
+            text_mode: false,
+            redraw: true,
             icon_cache: { crate::icons::set_theme(&config.icon_theme); crate::icons::resolver::set_folder_icons(&config.folder_icons); IconCache::new(config.folder_previews) },
             thumb_cache: ThumbCache::new(),
             previews,
@@ -620,7 +624,13 @@ impl App {
         Ok(app)
     }
 
+    pub fn needs_live_redraw(&self) -> bool {
+        self.name_prompt.is_some() || self.conflict_prompt.is_some() || self.rename_state.is_some()
+            || self.path_bar_editing || self.search.is_some() || self.properties.is_some() || self.fileops.busy()
+    }
+
     pub fn reload_dir(&mut self) {
+        self.redraw = true;
         // While showing results, "reload" means re-running the search
         // (sort/hidden toggles, renames, ...), never listing the folder.
         if let Some(search) = &mut self.search
@@ -881,6 +891,21 @@ impl App {
         let home_size = dirs::home_dir().and_then(|h| self.dirstates.get(&h)).and_then(|s| s.icon_size_idx);
         let idx = state.icon_size_idx.or(home_size).unwrap_or(c.icon_size_idx).min(ICON_LEVELS.len() - 1);
         self.set_icon_size(idx);
+        if self.text_mode && self.view_mode == ViewMode::Icons {
+            self.view_mode = ViewMode::Compact;
+        }
+    }
+
+    pub fn toggle_text_mode(&mut self) {
+        self.text_mode = !self.text_mode;
+        self.kitty_delete_all = true;
+        self.underlays.clear();
+        self.band_shown = None;
+        self.icon_cache.clear_protocols();
+        self.sidebar_icons.clear_protocols();
+        self.thumb_cache.clear_protocols();
+        self.apply_dir_state();
+        self.reload_dir();
     }
 
     /// Move a place to another position in the list and save it.
@@ -1190,6 +1215,7 @@ impl App {
     }
 
     pub fn notify(&mut self, text: String) {
+        self.redraw = true;
         self.notice = Some((text, std::time::Instant::now() + std::time::Duration::from_secs(8)));
     }
 
@@ -1424,6 +1450,9 @@ impl App {
     /// Icons and thumbnails for every view on screen: when split, the other
     /// side's wishes are gathered first and planned after this side's.
     pub fn queue_all_visible_icons(&mut self) {
+        if self.text_mode {
+            return;
+        }
         self.other_thumb_jobs.clear();
         if self.split() {
             self.collecting_thumb_jobs = true;
@@ -1434,7 +1463,7 @@ impl App {
     }
 
     pub fn queue_visible_icons(&mut self) {
-        if self.view_mode == ViewMode::Compact {
+        if self.view_mode == ViewMode::Compact || self.text_mode {
             return;
         }
         let target_px = self.icon_target_px();

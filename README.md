@@ -43,6 +43,9 @@ A small rewrite of file-browser-tui by adelmonte at https://github.com/adelmonte
 - `Ctrl+H`, `Alt+.`: Show/hide hidden files
 - `n`: New folder
 - `Ctrl+N`: New file
+- `Ctrl+D`: Drag to another app (needs ripdrag)
+- `F9`: Text icons on/off
+- `Shift+F10`: Context menu
 - `F2`: Rename
 - `Ctrl+C`: Copy
 - `Ctrl+X`: Cut

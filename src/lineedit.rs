@@ -66,6 +66,13 @@ fn word_end(text: &str, mut i: usize) -> usize {
 }
 
 /// Apply a key to `text` with the cursor at byte offset `cursor`.
+pub fn insert(text: &mut String, cursor: &mut usize, pasted: &str) {
+    let line: String = pasted.split(['\r', '\n']).next().unwrap_or_default().chars().filter(|c| !c.is_control()).collect();
+    *cursor = (*cursor).min(text.len());
+    text.insert_str(*cursor, &line);
+    *cursor += line.len();
+}
+
 pub fn edit(text: &mut String, cursor: &mut usize, ev: KeyEvent) -> Edit {
     *cursor = (*cursor).min(text.len());
     let ctrl = ev.modifiers.contains(KeyModifiers::CONTROL);

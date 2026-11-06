@@ -325,6 +325,9 @@ fn draw_cell(buf: &mut Buffer, app: &mut App, entry_idx: usize, cell_rect: Rect,
     Paragraph::new(lines_to_text_styled_centered(&label_lines, label_fg, cell_w as usize)).render(label_rect, buf);
 }
 
+const FOLDER_SCALE: f32 = 0.8;
+const FOLDER_MIN_ROWS: u16 = 5;
+
 pub(crate) fn render_cell_image(
     buf: &mut Buffer,
     app: &mut App,
@@ -339,10 +342,23 @@ pub(crate) fn render_cell_image(
         .is_some_and(|m| app.previews.covers(m))
         && !app.thumb_cache.failed(&entry_path);
 
-    let (cols, rows) = (icon_rect.width, icon_rect.height);
+    let is_folder = app.listing.entries[entry_idx].is_dir && !is_media;
+    let image_rect = if is_folder && icon_rect.height >= FOLDER_MIN_ROWS {
+        let width = (icon_rect.width as f32 * FOLDER_SCALE).round() as u16;
+        let height = (icon_rect.height as f32 * FOLDER_SCALE).round() as u16;
+        Rect {
+            x: icon_rect.x + (icon_rect.width - width) / 2,
+            y: icon_rect.bottom() - height,
+            width,
+            height,
+        }
+    } else {
+        icon_rect
+    };
+    let (cols, rows) = (image_rect.width, image_rect.height);
     let dim = app.is_cut(&entry_path);
 
-    let drew = {
+    let drew = !app.text_mode && {
         let proto = if is_media {
             app.thumb_cache.get_mut(&app.picker, &entry_path, cols, rows, bg, dim)
         } else {
@@ -353,11 +369,11 @@ pub(crate) fn render_cell_image(
             if let Some(c) = bg {
                 Block::default().style(Style::default().bg(rgb(c))).render(icon_rect, buf);
             }
-            StatefulImage::new().render(icon_rect, buf, proto);
+            StatefulImage::new().render(image_rect, buf, proto);
             // Per-cell placeholders: overlays drawn later cover the image
             // cell by cell instead of the image having to be hidden.
             if app.picker.protocol_type() == ProtocolType::Kitty {
-                kitty::split_placeholder_rows(buf, icon_rect, &mut app.kitty_transmits);
+                kitty::split_placeholder_rows(buf, image_rect, &mut app.kitty_transmits);
             }
             true
         } else {
@@ -366,8 +382,8 @@ pub(crate) fn render_cell_image(
     };
 
     if drew {
-        app.frame_images.insert(entry_path, (icon_rect, bg, dim));
-    } else if std::time::Instant::now() >= app.icons_grace_until {
+        app.frame_images.insert(entry_path, (image_rect, bg, dim));
+    } else if app.text_mode || std::time::Instant::now() >= app.icons_grace_until {
         // Placeholder nerd font icon, centered in the cell
         let entry = &app.listing.entries[entry_idx];
         let placeholder = if entry.is_dir {
@@ -378,8 +394,13 @@ pub(crate) fn render_cell_image(
         // Center 2-wide glyph horizontally and vertically within icon_rect
         let px = icon_rect.x + icon_rect.width.saturating_sub(2) / 2;
         let py = icon_rect.y + icon_rect.height / 2;
+        let style = match (app.text_mode, entry.is_dir) {
+            (true, true) => Style::default().fg(theme::accent()),
+            (true, false) => Style::default().fg(theme::text()),
+            _ => Style::default().add_modifier(Modifier::DIM),
+        };
         if px + 2 <= icon_rect.x + icon_rect.width {
-            Paragraph::new(placeholder).style(Style::default().add_modifier(Modifier::DIM)).render(Rect { x: px, y: py, width: 2, height: 1 }, buf);
+            Paragraph::new(placeholder).style(style).render(Rect { x: px, y: py, width: 2, height: 1 }, buf);
         }
     }
 }

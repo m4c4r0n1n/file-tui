@@ -22,6 +22,7 @@ fn menu_sel() -> Color { theme::rgb(theme::get().highlight) }
 #[derive(Debug, Clone, PartialEq)]
 pub enum MenuAction {
     None,
+    DragOut,
     Open,
     /// Open with `App::open_with[i]`.
     OpenWith(usize),
@@ -242,6 +243,7 @@ pub fn build_context_menu(app: &App, target: MenuTarget) -> Vec<MenuItem> {
                 MenuItem::new("tar.gz", MenuAction::CompressTarGz),
                 MenuItem::new("zip", MenuAction::CompressZip),
             ]));
+            items.push(MenuItem::new("\u{f0b2}  Drag to App", MenuAction::DragOut));
             push_custom_items(app, &mut items, if is_dir { "dir" } else { "file" });
             let mime = if is_dir {
                 "inode/directory".to_string()

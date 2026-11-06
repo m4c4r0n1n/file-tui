@@ -212,6 +212,9 @@ fn sections(app: &App) -> Vec<(&'static str, Vec<Row>)> {
 /// Ask for every icon the first frame shows (sidebar, location), so
 /// startup can wait for them instead of drawing without.
 pub fn request_icons(app: &mut App) {
+    if app.text_mode {
+        return;
+    }
     let mut names: Vec<String> = sections(app).into_iter().flat_map(|(_, rows)| rows).map(|r| r.icon).collect();
     names.push(crate::ui::topbar::location_icon(app));
     for name in names {
@@ -232,7 +235,33 @@ fn usage_bar(usage: f32, width: u16) -> Line<'static> {
 }
 
 /// Draw a theme icon by name (cached separately from file icons).
+fn text_glyph(name: &str) -> &'static str {
+    let name = name.to_lowercase();
+    let has = |words: &[&str]| words.iter().any(|w| name.contains(w));
+    if has(&["trash", "recycle"]) { "\u{f1f8}" }
+    else if has(&["home"]) { "\u{f015}" }
+    else if has(&["download"]) { "\u{f019}" }
+    else if has(&["music"]) { "\u{f001}" }
+    else if has(&["picture"]) { "\u{f03e}" }
+    else if has(&["video"]) { "\u{f03d}" }
+    else if has(&["document"]) { "\u{f15c}" }
+    else if has(&["develop"]) { "\u{f121}" }
+    else if has(&["eject"]) { "\u{f052}" }
+    else if has(&["find"]) { "\u{f002}" }
+    else if has(&["drive", "disk", "phone"]) { "\u{f0a0}" }
+    else { "\u{f07b}" }
+}
+
 pub fn draw_icon(f: &mut Frame, app: &mut App, name: &str, rect: Rect, bg: Option<(u8, u8, u8)>) {
+    if app.text_mode {
+        let at = Rect { y: rect.y + rect.height.saturating_sub(1) / 2, height: 1, ..rect };
+        let mut style = Style::default().fg(theme::accent());
+        if let Some(c) = bg {
+            style = style.bg(theme::rgb(c));
+        }
+        f.render_widget(Paragraph::new(text_glyph(name)).alignment(ratatui::layout::Alignment::Center).style(style), at);
+        return;
+    }
     // Sidebar icons are keyed by theme name, in their own cache
     let key = request_icon(app, name);
     let Some(proto) = app.sidebar_icons.get_mut(&app.picker, &key, rect.width, rect.height, bg, false) else { return; };

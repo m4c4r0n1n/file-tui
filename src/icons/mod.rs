@@ -250,7 +250,7 @@ impl IconCache {
 
         Self {
             // Plain icons are shared rasters, so many entries cost little
-            images: LruCache::new(NonZeroUsize::new(5000).unwrap()),
+            images: LruCache::new(NonZeroUsize::new(1500).unwrap()),
             protocols: LruCache::new(NonZeroUsize::new(500).unwrap()),
             mimes: LruCache::new(NonZeroUsize::new(20_000).unwrap()),
             tx_work,

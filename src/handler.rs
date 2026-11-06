@@ -96,6 +96,27 @@ fn total_scroll_rows(app: &App) -> usize {
     }
 }
 
+pub fn handle_paste(app: &mut App, text: &str) {
+    if let Some(p) = &mut app.conflict_prompt {
+        lineedit::insert(&mut p.input, &mut p.cursor_pos, text);
+        p.invalid = false;
+    } else if let Some(p) = &mut app.name_prompt {
+        lineedit::insert(&mut p.input, &mut p.cursor_pos, text);
+        p.invalid = false;
+    } else if let Some(r) = &mut app.rename_state {
+        lineedit::insert(&mut r.input, &mut r.cursor_pos, text);
+        r.invalid = false;
+    } else if app.path_bar_editing {
+        lineedit::insert(&mut app.path_bar_input, &mut app.path_bar_cursor, text);
+        app.update_path_completions();
+    } else if let Some(s) = app.search.as_mut().filter(|s| s.focused) {
+        lineedit::insert(&mut s.query, &mut s.cursor, text);
+        app.search_changed();
+    } else if !app.show_help && app.properties.is_none() && app.confirm_delete.is_none() && app.menu.is_none() {
+        crate::dnd::offer_pasted(app, text);
+    }
+}
+
 pub fn handle_key(app: &mut App, ev: KeyEvent) -> bool {
     crate::lineedit::bump_cursor();
     // Quit works regardless of any modal state
@@ -437,7 +458,18 @@ fn run_action(app: &mut App, action: Action) -> bool {
         Action::OpenTerminal => actions::execute(app, MenuAction::OpenTerminal, MenuTarget::Empty),
         Action::ZoomIn => app.resize_icons(1),
         Action::ZoomOut => app.resize_icons(-1),
+        Action::ViewIcons if app.text_mode => {}
         Action::ViewIcons => app.set_view_mode(ViewMode::Icons),
+        Action::ToggleTextMode => app.toggle_text_mode(),
+        Action::ContextMenu => {
+            let items = menu::build_context_menu(app, target);
+            if !items.is_empty() {
+                let area = app.main_area;
+                let at = (area.x + area.width / 3, area.y + area.height / 3);
+                app.menu = Some(MenuState::new(MenuKind::Context, target, items, at));
+            }
+        }
+        Action::DragOut => crate::dnd::drag_out(app),
         Action::ViewCompact => app.set_view_mode(ViewMode::Compact),
         Action::ViewDetails => app.set_view_mode(ViewMode::Details),
         Action::SidebarNarrower => app.sidebar_w = app.sidebar_w.saturating_sub(2).max(8),

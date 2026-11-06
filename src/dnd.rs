@@ -212,9 +212,64 @@ fn received(app: &mut App, idx: usize, chunk: &str, more: bool) {
     }
 }
 
+fn pasted_paths(text: &str) -> Vec<PathBuf> {
+    let text = text.replace('\r', "\n");
+    if text.trim_start().starts_with("file://") {
+        return parse_uri_list(&text);
+    }
+    let mut paths = Vec::new();
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        let mut path = String::new();
+        let mut chars = line.chars();
+        while let Some(c) = chars.next() {
+            path.push(if c == '\\' { chars.next().unwrap_or(c) } else { c });
+        }
+        let path = PathBuf::from(path);
+        if !path.is_absolute() || path.symlink_metadata().is_err() {
+            return Vec::new();
+        }
+        paths.push(path);
+    }
+    paths
+}
+
+pub fn drag_out(app: &mut App) {
+    let paths = crate::actions::selected_paths(app);
+    if paths.is_empty() {
+        return;
+    }
+    let mut cmd = std::process::Command::new("ripdrag");
+    cmd.args(["-x", "-n", "-b"]);
+    if paths.len() > 1 {
+        cmd.arg("-A");
+    }
+    cmd.args(&paths);
+    cmd.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+    match crate::launch::spawn_own_session(&mut cmd) {
+        Ok(mut child) => {
+            std::thread::spawn(move || { let _ = child.wait(); });
+        }
+        Err(_) => app.notify("Drag to App needs ripdrag".into()),
+    }
+}
+
+pub fn offer_pasted(app: &mut App, text: &str) {
+    let paths = pasted_paths(text);
+    if paths.is_empty() {
+        return;
+    }
+    let area = app.main_area;
+    let cwd = app.cwd.clone();
+    offer_to(app, paths, cwd, (area.x + area.width / 3, area.y + area.height / 3));
+}
+
 /// Ask what to do with the dropped files, like Dolphin.
 fn offer_drop(app: &mut App, paths: Vec<PathBuf>, (col, row): (u16, u16)) {
     let (Some(dest), _) = drop_dest(app, col, row) else { return; };
+    offer_to(app, paths, dest, (col, row));
+}
+
+fn offer_to(app: &mut App, paths: Vec<PathBuf>, dest: PathBuf, (col, row): (u16, u16)) {
     // Dropped back where they already are
     if paths.iter().all(|p| p.parent() == Some(dest.as_path()) || *p == dest) {
         return;

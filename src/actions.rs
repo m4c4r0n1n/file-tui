@@ -97,6 +97,7 @@ pub fn execute(app: &mut App, action: MenuAction, target: MenuTarget) {
         }
 
         MenuAction::EmptyTrash => app.fileops.empty_trash(),
+        MenuAction::DragOut => crate::dnd::drag_out(app),
 
         MenuAction::NewFolder => create_new(app, true),
         MenuAction::NewFile => create_new(app, false),
