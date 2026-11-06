@@ -1457,6 +1457,7 @@ impl App {
                 (start, end) = (a, (b + 1).min(self.listing.entries.len()));
             }
         }
+        let end = end.min(self.listing.entries.len());
         if start >= end { return; }
 
         for i in start..end {

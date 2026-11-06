@@ -116,7 +116,7 @@ pub fn render_grid(f: &mut Frame, app: &mut App, area: Rect) {
             draw_group_header(f.buffer_mut(), area, y + band.h as i32 - 2, label);
             continue;
         }
-        for (col_idx, entry_idx) in (band.start..band.end).enumerate() {
+        for (col_idx, entry_idx) in (band.start..band.end.min(app.listing.entries.len())).enumerate() {
             let cell_x = area.x + col_idx as u16 * pitch + item_off;
             if renaming == Some(entry_idx) {
                 rename_cell = Some((cell_x, y));
@@ -206,7 +206,7 @@ pub fn icon_at_pos(app: &App, col: u16, row: u16) -> Option<usize> {
     let pitch = app.grid_pitch.max(1);
     let c = ((col - area.x) / pitch) as usize;
     let idx = band.start + c;
-    if c >= app.grid_cols as usize || idx >= band.end {
+    if c >= app.grid_cols as usize || idx >= band.end || idx >= app.listing.entries.len() {
         return None;
     }
     // Only the icon and the name's text count, as in Dolphin: the space

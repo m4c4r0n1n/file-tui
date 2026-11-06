@@ -144,6 +144,13 @@ fn main() -> anyhow::Result<()> {
     }
     fs::mounts::spawn_mount_watcher(mount_tx);
 
+    let hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = execute!(std::io::stdout(), PopKeyboardEnhancementFlags, DisableMouseCapture);
+        ratatui::restore();
+        hook(info);
+    }));
+
     let is_kitty = app.picker.protocol_type() == ProtocolType::Kitty;
     if is_kitty {
         dnd::enable();
