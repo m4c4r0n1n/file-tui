@@ -1,5 +1,7 @@
 # file-tui
 
+A small rewrite of file-browser-tui by adelmonte at https://github.com/adelmonte/file-browser-tui with a few adjustments and tweaks to work with Ghostty and NixOS cleanly. 
+
 <img src="https://github.com/user-attachments/assets/d115502b-3206-4dd4-8dd4-d1a3744b8684" width="100%" alt="file-tui showing the home folder" />
 
 <table>
