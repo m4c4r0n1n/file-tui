@@ -67,7 +67,7 @@ pub enum Action {
 
 /// Config name, action, Dolphin's default keys, and the help text.
 pub const ACTIONS: &[(&str, Action, &[&str], &str)] = &[
-    ("quit", Action::Quit, &["Ctrl+Q"], "Quit"),
+    ("quit", Action::Quit, &["Ctrl+C"], "Quit"),
     ("open", Action::Open, &["Enter"], "Open"),
     ("cancel", Action::Cancel, &["Esc"], "Clear the selection / close search"),
     ("move_left", Action::MoveLeft, &["Left"], "Move left (Details: collapse)"),
@@ -98,7 +98,7 @@ pub const ACTIONS: &[(&str, Action, &[&str], &str)] = &[
     ("new_folder", Action::NewFolder, &["F10"], "New folder"),
     ("new_file", Action::NewFile, &[], "New file"),
     ("rename", Action::Rename, &["F2"], "Rename"),
-    ("copy", Action::Copy, &["Ctrl+C"], "Copy"),
+    ("copy", Action::Copy, &["Alt+C"], "Copy"),
     ("cut", Action::Cut, &["Ctrl+X"], "Cut"),
     ("paste", Action::Paste, &["Ctrl+V"], "Paste"),
     ("copy_location", Action::CopyLocation, &["Ctrl+Alt+C"], "Copy location"),
@@ -306,12 +306,12 @@ mod tests {
         assert_eq!(problems, vec!["unknown action \"bogus\"".to_string()]);
         assert_eq!(km.action(&ev(KeyCode::Char('r'), KeyModifiers::ALT)), Some(Action::Rename));
         assert_eq!(km.action(&ev(KeyCode::Char('h'), KeyModifiers::CONTROL)), None);
-        assert_eq!(km.action(&ev(KeyCode::Char('q'), KeyModifiers::CONTROL)), Some(Action::Quit));
+        assert_eq!(km.action(&ev(KeyCode::Char('c'), KeyModifiers::CONTROL)), Some(Action::Quit));
         // Shifted letter arrives uppercase, with or without the flag
         let (km, _) = Keymap::new(&HashMap::from([("copy".to_string(), vec!["Ctrl+Shift+C".to_string()])]));
         assert_eq!(km.action(&ev(KeyCode::Char('C'), KeyModifiers::CONTROL)), Some(Action::Copy));
         assert_eq!(km.action(&ev(KeyCode::Char('c'), KeyModifiers::CONTROL | KeyModifiers::SHIFT)), Some(Action::Copy));
-        assert_eq!(km.action(&ev(KeyCode::Char('c'), KeyModifiers::CONTROL)), None);
+        assert_eq!(km.action(&ev(KeyCode::Char('c'), KeyModifiers::CONTROL)), Some(Action::Quit));
         // Symbols ignore Shift; "Plus" and "Ctrl++" are the same key
         assert_eq!(Combo::parse("Ctrl++"), Combo::parse("Ctrl+Plus"));
         let (km, _) = Keymap::new(&HashMap::new());
