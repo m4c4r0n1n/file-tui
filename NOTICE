@@ -5,8 +5,7 @@ Changed on 2026-11-05: renamed the project; plain text and menus for Ghostty;
 full sidebar highlight; larger sidebar icons; fixed the icon temp-file race;
 lower idle redraw rate; permanent delete inside Trash.
 
-Changed on 2026-11-06: fixed a crash when opening an empty folder; Ctrl+C quits
-and Alt+C copies; files can be dragged onto Places and Trash; files dropped from
+Changed on 2026-11-06: fixed a crash when opening an empty folder; files can be dragged onto Places and Trash; files dropped from
 other windows in Ghostty ask to move, copy or link; pasted text no longer runs
 shortcuts; the name box says why a name was refused; smaller folder icons in the icon view;
 Ctrl+D drags files out to other apps with ripdrag; text icons with F9, --text or
