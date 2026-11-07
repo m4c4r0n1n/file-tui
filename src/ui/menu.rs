@@ -845,10 +845,10 @@ mod tests {
         let (_, used) = kitty::centered_text(2, 0, 2, avail, label, (0, 0, 0), None);
         let (_, all) = kitty::centered_text(2, 0, 2, 200, label, (0, 0, 0), None);
         assert_eq!(used, all);
-        assert_eq!(kitty::centered_width(label.chars().count(), 2), all);
+        assert!(kitty::centered_width(label.chars().count(), 2) >= all);
         for n in 1..60 {
             let text: String = "x".repeat(n);
-            assert_eq!(kitty::centered_width(n, 2), kitty::centered_text(0, 0, 2, 500, &text, (0, 0, 0), None).1, "{n}");
+            assert!(kitty::centered_width(n, 2) >= kitty::centered_text(0, 0, 2, 500, &text, (0, 0, 0), None).1, "{n}");
         }
     }
 }

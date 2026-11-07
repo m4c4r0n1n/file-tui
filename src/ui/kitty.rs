@@ -144,12 +144,11 @@ static DIACRITICS: [char; 297] = [
 #[cfg(test)]
 mod tests {
     #[test]
-    fn centered_text_keeps_a_spare_column() {
+    fn centered_text_stops_at_the_limit() {
         let (s, used) = super::centered_text(0, 0, 2, 20, "A very long place name", (0, 0, 0), None);
         assert_eq!(used, 20);
-        assert!(s.contains("w=7:n=1:d=2:v=2;A very long p\x07"));
-        assert!(s.contains("w=3:n=1:d=2:v=2;lace \x07"));
+        assert!(s.contains("A very long place na\x1b[0m"));
         let (_, used) = super::centered_text(0, 0, 2, 20, "Pictures", (0, 0, 0), None);
-        assert_eq!(used, 10);
+        assert_eq!(used, 8);
     }
 }

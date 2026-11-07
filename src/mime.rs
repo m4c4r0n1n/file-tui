@@ -177,8 +177,12 @@ pub fn detect(path: &Path) -> Option<String> {
         let m = canonical(&g.mime);
         is_text(m) == textual && (!textual || is_xml(m) == looks_xml)
     };
-    let chosen = best(cands.iter().filter(fits)).unwrap_or(top);
-    Some(canonical(&chosen.mime).to_string())
+    let chosen = best(cands.iter().filter(fits));
+    let typescript = path.extension().is_some_and(|e| e.eq_ignore_ascii_case("ts"));
+    if chosen.is_none() && textual && typescript {
+        return Some("application/typescript".to_string());
+    }
+    Some(canonical(&chosen.unwrap_or(top).mime).to_string())
 }
 
 /// Icon theme names for a mime type, most specific first: the type itself,
