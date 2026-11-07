@@ -13,7 +13,7 @@ A rewrite of file-browser-tui by adelmonte at https://github.com/adelmonte/file-
 
 ## Keybinds
 
-- `Ctrl+C`: Quit
+- `Q`: Quit
 - `Enter`: Open
 - `Esc`: Clear the selection / close search
 - `Left`: Move left (Details: collapse)
